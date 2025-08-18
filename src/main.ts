@@ -132,7 +132,10 @@ function keyup(event) {
         chord.up(code);
         if (chord.isClear()) {
             const keys = chord.pressedKeys();
-            text += parseChord(keys);
+            const generated = parseChord(keys);
+            if (generated != undefined) {
+                text += generated;
+            }
             chord.reset();
         }
     }
@@ -143,6 +146,9 @@ const Box = {
         return [
             m("h1","Test input"),
             m("div", {style: {minHeight: "6ex"}}, text),
+            m("h1","Sample input"),
+            m('div', {onkeydown: (() => false), onkeyup: (() => false)},
+              [m("input", {placeholder: "This is an empty text box. Use it to drop in sample text for copy typing.", size: 50, })]),
             m("div", [
                 m('h4', "NOTES:"),
                 m('ul', [
