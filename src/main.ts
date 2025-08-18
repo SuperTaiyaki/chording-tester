@@ -142,7 +142,18 @@ const Box = {
     view: (() => {
         return [
             m("h1","Test input"),
-            m("div", text)
+            m("div", {style: {minHeight: "6ex"}}, text),
+            m("div", [
+                m('h4', "NOTES:"),
+                m('ul', [
+                    m('li', 'Keys are mapped to the home row (real A for a, real F for e, real U-P and J-semicolon)'),
+                    m('li', 'Only the 1 and 2 character codes in the main table are implemented (no numbers, modifiers, etc).'),
+                    m('li', 'Enter and tab are not implemented'),
+                    m('li', 'Thumb modifiers are not implemented'),
+                    m('li', 'Space is space bar, backspace is backspace'),
+                ])
+            ]),
+            m("div", ["Source: ", m('a', {href: 'https://github.com/SuperTaiyaki/chording-tester' }, 'https://github.com/SuperTaiyaki/chording-tester')]),
         ];
     })
 }
