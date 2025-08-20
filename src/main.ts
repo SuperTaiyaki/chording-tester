@@ -1,6 +1,8 @@
 
 import m from "mithril";
 
+import './style.css';
+
 const doubleKeys: Map<String, String> = new Map([
 // 1 char
 ['0', 'r'],
@@ -11,6 +13,8 @@ const doubleKeys: Map<String, String> = new Map([
 ['5', 'o'],
 ['6', 't'],
 ['7', 'e'],
+
+['8', ' '],
 
 // two chars
 ['0-1', 'b'], // this is probably sub-optimal, can this be expressed in a saner way?
@@ -53,7 +57,7 @@ class Chord
     pressed: boolean[] = []
     keys: number[] = []
     constructor() {
-        for (let i = 0;i < 8; i++) {
+        for (let i = 0;i < 10; i++) { // TODO: sync this to the max number of keys defined in the keymap!
             this.keys[i] = 0;
             this.pressed[i] = false;
         }
@@ -78,7 +82,7 @@ class Chord
     }
 
     reset() {
-        for (let i = 0;i < 8; i++) {
+        for (let i = 0;i < 10; i++) {
             this.pressed[i] = false;
         }
     }
@@ -95,6 +99,9 @@ const mapping = new Map([
     ['KeyD', 6],
     ['KeyF', 7],
 
+    ['KeyV', 8],
+    ['KeyB', 9],
+
     ['KeyP', 0],
     ['KeyO', 1],
     ['KeyI', 2],
@@ -104,6 +111,9 @@ const mapping = new Map([
     ['KeyL', 5],
     ['KeyK', 6],
     ['KeyJ', 7],
+
+    ['KeyM', 8], //mod
+    ['KeyN', 9],
 ]);
 
 
@@ -116,7 +126,7 @@ function keydown(event) {
     if (code != undefined && event.repeat == false) {
         chord.down(code);
     }
-    if (event.code == "Space"  && event.repeat == false) {
+    if (event.code == "Space" && event.repeat == false) {
         text += (" ");
     }
     if (event.code == "Backspace") {
@@ -127,7 +137,6 @@ function keydown(event) {
 function keyup(event) {
     const code = mapping.get(event.code);
     if (code != undefined) {
-        console.log("EEEEE");
 
         chord.up(code);
         if (chord.isClear()) {
@@ -164,12 +173,40 @@ const Box = {
     })
 }
 
+// TODO: make this flippable for the right hand too
+const KeyDiagram = {
+    view: ((vnode) => {
+        const keysUsed = vnode.attrs.chord.split("-");
+
+        const buttonStates = Array(8);
+        buttonStates.fill(0, 0, 8); // Array(8) doesn't iterate in forEach!
+        buttonStates.forEach((x, i) => {
+           buttonStates[i]  = m('td', (keysUsed.includes(String(i)) ? "O" : "X"));
+        }); // TODO: this probably requires a cleanup...
+
+        return [
+            m("table", {style: {"borderbottom": "1px solid black"}}, [
+                m("tr", [m("td", {rowspan: 2}, m("h4", vnode.attrs.keysym, ))].concat(buttonStates.slice(0,4))),
+                m("tr", buttonStates.slice(4,8)),
+            ]),
+        ];
+    })
+}
+
+const allKeys = doubleKeys.entries().map((code) => 
+    m(KeyDiagram, {keysym: code[1], chord: code[0]})
+).toArray();
+
 const App = {
     view: (() => {
-        return [
-            m("img", {src: "/taipo.png", style: {width: "55%"}}),
-            m(Box)
-        ];
+        return m("div.app", [
+            m("div.keyDiagram", allKeys),
+            m("div.main", [
+                m("img", {src: "/taipo.png", style: {width: "55%"}}),
+                m(Box),
+            ]),
+            m("div.keyDiagram", allKeys),
+        ]);
     })
 }
 

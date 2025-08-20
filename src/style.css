@@ -36,7 +36,7 @@ h1 {
 }
 
 #app {
-  max-width: 1280px;
+/*  max-width: 1280px; */
   margin: 0 auto;
   padding: 2rem;
   text-align: center;
@@ -94,3 +94,32 @@ button:focus-visible {
     background-color: #f9f9f9;
   }
 }
+
+table {
+    border-bottom: 1px solid black;
+}
+
+/* ah fuck how does the newer box layout work again.... 
+ * flexbox, that thing
+ * */
+div.app {
+    display: flex;
+
+}
+div.keymap {
+    flex: 1;
+}
+div.main {
+    flex: 2 50%;
+}
+div.keyDiagram {
+    flex: 1;
+    display: flex;
+    flex-wrap: wrap;
+}
+div.keyDiagram > table {
+    border: 1px solid black;
+    flex: 1;
+}
+
+
