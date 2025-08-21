@@ -122,4 +122,31 @@ div.keyDiagram > table {
     flex: 1;
 }
 
+div.keyDiagram > table.minor {
+    border: 1px solid black;
+    flex: 1 50%;
+}
 
+div.keyDiagram > table.major {
+    border: 1px solid black;
+    flex: 3 100%;
+}
+
+div.keyDiagram > table td {
+    border: 1px solid black;
+    width: 1ex;
+    height: 1ex;
+}
+
+div.keyDiagram > table td.lead {
+    min-width: 1.5em;
+}
+
+div.keyDiagram > table td.O {
+    background-color: black;
+    max-height: 1em;
+}
+
+div.keyDiagram > table td.X {
+    max-height: 1em;
+}

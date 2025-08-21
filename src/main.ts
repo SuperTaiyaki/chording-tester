@@ -3,7 +3,7 @@ import m from "mithril";
 
 import './style.css';
 
-const doubleKeys: Map<String, String> = new Map([
+const taipoMap = [
 // 1 char
 ['0', 'r'],
 ['1', 's'],
@@ -44,8 +44,75 @@ const doubleKeys: Map<String, String> = new Map([
 ['2-5', '-'],
 ['3-6', '?'],
 ['1-4', '\''],
-]);
+];
 
+const poshMap = [
+    ['7', 'e'],
+    ['6', 't'],
+    ['5', 'o'],
+    ['3', 'i'],
+    ['2', 'n'],
+    ['1', 'a'],
+
+    ['2-3', 's'],
+    ['6-7', 'h'],
+    ['2-7', 'r'],
+    ['1-2', 'd'],
+    ['3-6', 'l'],
+    ['4-6', 'c'],
+    ['4-5', 'u'],
+    ['1-3', 'f'],
+    ['2-5', 'g'],
+    ['2-3-5', 'y'],
+    ['2-3-4', 'p'],
+    ['5-6-7', 'b'],
+    ['2-5-7', 'v'],
+    ['2-3-7', 'k'],
+    ['1-6-7', 'x'],
+   /* ['', ''],
+    ['', ''],
+    ['', ''],
+    ['', ''],
+    ['', ''],*/
+];
+
+const arduxMap = [
+// 1 char
+['0', 's'],
+['1', 't'],
+['2', 'r'],
+['3', 'a'],
+['4', 'o'],
+['5', 'i'],
+['6', 'y'],
+['7', 'e'],
+
+['8', ' '],
+
+// two chars
+['4-7', 'b'], // this is probably sub-optimal, can this be expressed in a saner way?
+['6-7', 'c'],
+['1-2', 'p'],
+['1-2-3', 'd'],
+['2-3', 'f'],
+['5-7', 'h'],
+['0-1', 'j'],
+['4-6', 'k'],
+['5-6-7', 'l'],
+
+['4-5-6', 'm'],
+['4-5', 'n'],
+['4-5-7', 'p'],
+
+['0-1-3', 'q'],
+['5-6', 'u'],
+['0-2', 'v'],
+['0-3', 'w'],
+['0-1-2', 'x'],
+['0-1-2-3', 'z'],
+];
+
+const doubleKeys: Map<String, String> = new Map(arduxMap);
 
 function parseChord(keys: Array<number>) {
     return doubleKeys.get(keys.toSorted().join("-"));
@@ -136,6 +203,7 @@ function keydown(event) {
 
 function keyup(event) {
     const code = mapping.get(event.code);
+    console.log("X");
     if (code != undefined) {
 
         chord.up(code);
@@ -154,10 +222,14 @@ const Box = {
     view: (() => {
         return [
             m("h1","Test input"),
-            m("div", {style: {minHeight: "6ex"}}, text),
+            m("div", {style: {minHeight: "6ex"}}, m("input", {placeholder: "Type here", size: 50, 
+                onkeydown: ((event) => {keydown(event); event.stopPropagation(); return false;}),
+                onkeyup: ((event) => {keyup(event); event.stopPropagation(); m.redraw(); return false;}),
+                value: text,
+            })),
             m("h1","Sample input"),
-            m('div', {onkeydown: (() => false), onkeyup: (() => false)},
-              [m("input", {placeholder: "This is an empty text box. Use it to drop in sample text for copy typing.", size: 50, })]),
+            m('div',
+              [m("input", {placeholder: "This is an empty text box. Use it to drop in sample text for copy typing.", size: 50, text: "htns"})]),
             m("div", [
                 m('h4', "NOTES:"),
                 m('ul', [
@@ -176,31 +248,58 @@ const Box = {
 // TODO: make this flippable for the right hand too
 const KeyDiagram = {
     view: ((vnode) => {
-        const keysUsed = vnode.attrs.chord.split("-");
+        const keysUsed = vnode.attrs.chord;
 
         const buttonStates = Array(8);
         buttonStates.fill(0, 0, 8); // Array(8) doesn't iterate in forEach!
         buttonStates.forEach((x, i) => {
-           buttonStates[i]  = m('td', (keysUsed.includes(String(i)) ? "O" : "X"));
+           buttonStates[i]  = m('td', {class: (keysUsed.includes(String(i)) ? "O" : "X")}, "_");
         }); // TODO: this probably requires a cleanup...
 
         return [
-            m("table", {style: {"borderbottom": "1px solid black"}}, [
-                m("tr", [m("td", {rowspan: 2}, m("h4", vnode.attrs.keysym, ))].concat(buttonStates.slice(0,4))),
+            m("table.minor", [
+                m("tr", [m("td.lead", {rowspan: 2}, m("h4", vnode.attrs.keysym, ))].concat(buttonStates.slice(0,4))),
                 m("tr", buttonStates.slice(4,8)),
             ]),
         ];
     })
 }
 
-const allKeys = doubleKeys.entries().map((code) => 
+const SingleKeyBlock = {
+    view: ((vnode) => {
+        let chars = vnode.attrs.chars.map((c) => m("td", c));
+        return [
+            m("table.major", [
+                m("tr", chars.slice(0,4)),
+                m("tr", chars.slice(4,8)),
+            ]),
+        ];
+    })
+};
+
+const singles = doubleKeys.entries().filter((code) => {
+    return code[0].split("-").length == 1; // can this be single-lined?
+}).toArray(); // istoArray() necessary? I can't forEach an iterator?
+
+let singleBlock = Array(8);
+singles.forEach((x) => {
+    singleBlock[Number(x[0])] = x[1];
+});
+
+let singleKeys = m(SingleKeyBlock, {chars: singleBlock});
+
+const allKeys = doubleKeys.entries().filter((code) => {
+    return code[0].split("-").length > 1; // can this be single-lined?
+}).map((code) => 
     m(KeyDiagram, {keysym: code[1], chord: code[0]})
 ).toArray();
+
+let keyDiagram = [singleKeys].concat(allKeys);
 
 const App = {
     view: (() => {
         return m("div.app", [
-            m("div.keyDiagram", allKeys),
+            m("div.keyDiagram", keyDiagram),
             m("div.main", [
                 m("img", {src: "/taipo.png", style: {width: "55%"}}),
                 m(Box),
@@ -210,6 +309,7 @@ const App = {
     })
 }
 
+/*`
 addEventListener("keydown", ((event) => {
     keydown(event);
 }));
@@ -217,6 +317,10 @@ addEventListener("keyup", ((event) => {
     keyup(event);
     m.redraw();
 }));
+*/
 
 m.mount(document.getElementById("app"), App);
 
+// taipo: https://inkeys.wiki/en/keymaps/taipo
+// posh: https://inkeys.wiki/en/keymaps/posh
+// ardux: https://inkeys.wiki/en/keymaps/ardux
