@@ -44,7 +44,7 @@ const taipoMap = [
 ['2-5', '-'],
 ['3-6', '?'],
 ['1-4', '\''],
-];
+] as const;
 
 const poshMap = [
     ['7', 'e'],
@@ -69,7 +69,7 @@ const poshMap = [
     ['2-5-7', 'v'],
     ['1-2-7', 'k'],
     ['1-6-7', 'x'],
-];
+] as const;
 
 const arduxMap = [
 // 1 char
@@ -106,9 +106,7 @@ const arduxMap = [
 ['0-3', 'w'],
 ['0-1-2', 'x'],
 ['0-1-2-3', 'z'],
-];
-
-let chordMap: Map<String, String> = new Map(arduxMap);
+] as const;
 
 function parseChord(keys: Array<number>, chordMap) {
     return chordMap.get(keys.toSorted().join("-"));
@@ -252,7 +250,7 @@ const KeyDiagram = {
 
         const buttonStates = Array(8);
         buttonStates.fill(0, 0, 8); // Array(8) doesn't iterate in forEach!
-        buttonStates.forEach((x, i) => {
+        buttonStates.forEach((_, i) => {
            buttonStates[i]  = m('td', {class: (keysUsed.includes(String(i)) ? "O" : "X")}, "_");
         }); // TODO: this probably requires a cleanup...
 
