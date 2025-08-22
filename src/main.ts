@@ -112,10 +112,10 @@ const arduxMap = [
 ['0-1-2-3', 'z'],
 ];
 
-const doubleKeys: Map<String, String> = new Map(arduxMap);
+const chordMap: Map<String, String> = new Map(arduxMap);
 
 function parseChord(keys: Array<number>) {
-    return doubleKeys.get(keys.toSorted().join("-"));
+    return chordMap.get(keys.toSorted().join("-"));
 }
 
 // TODO: Shift this outside to somewhere less stupid
@@ -277,7 +277,7 @@ const SingleKeyBlock = {
     })
 };
 
-const singles = doubleKeys.entries().filter((code) => {
+const singles = chordMap.entries().filter((code) => {
     return code[0].split("-").length == 1; // can this be single-lined?
 }).toArray(); // istoArray() necessary? I can't forEach an iterator?
 
@@ -288,38 +288,39 @@ singles.forEach((x) => {
 
 let singleKeys = m(SingleKeyBlock, {chars: singleBlock});
 
-const allKeys = doubleKeys.entries().filter((code) => {
+const allKeys = chordMap.entries().filter((code) => {
     return code[0].split("-").length > 1; // can this be single-lined?
 }).map((code) => 
     m(KeyDiagram, {keysym: code[1], chord: code[0]})
 ).toArray();
 
 let keyDiagram = [singleKeys].concat(allKeys);
+// TODO: Make this into a proper component and make it reversible
 
 const App = {
     view: (() => {
         return m("div.app", [
             m("div.keyDiagram", keyDiagram),
             m("div.main", [
-                m("img", {src: "/taipo.png", style: {width: "55%"}}),
+                //m("img", {src: "/taipo.png", style: {width: "55%"}}),
                 m(Box),
             ]),
-            m("div.keyDiagram", allKeys),
+            m("div.keyDiagram", keyDiagram),
         ]);
     })
 }
 
-/*`
-addEventListener("keydown", ((event) => {
-    keydown(event);
-}));
-addEventListener("keyup", ((event) => {
-    keyup(event);
-    m.redraw();
-}));
-*/
+//m.mount(document.getElementById("app"), App);
+m.route(document.getElementById("app"), "/", {
+    "/": {
+        render: (() => m(App, {layout: 'taipo'}))
+    },
+    "/:layout": {
+        render: ((vnode) => m(App, {layout: vnode.attrs.layout}))
+    }
+})
 
-m.mount(document.getElementById("app"), App);
+
 
 // taipo: https://inkeys.wiki/en/keymaps/taipo
 // posh: https://inkeys.wiki/en/keymaps/posh
