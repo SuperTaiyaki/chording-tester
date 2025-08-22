@@ -59,21 +59,16 @@ const poshMap = [
     ['2-7', 'r'],
     ['1-2', 'd'],
     ['3-6', 'l'],
-    ['4-6', 'c'],
-    ['4-5', 'u'],
+    ['5-7', 'c'],
+    ['5-6', 'u'],
     ['1-3', 'f'],
     ['2-5', 'g'],
     ['2-3-5', 'y'],
-    ['2-3-4', 'p'],
+    ['1-2-3', 'p'],
     ['5-6-7', 'b'],
     ['2-5-7', 'v'],
-    ['2-3-7', 'k'],
+    ['1-2-7', 'k'],
     ['1-6-7', 'x'],
-   /* ['', ''],
-    ['', ''],
-    ['', ''],
-    ['', ''],
-    ['', ''],*/
 ];
 
 const arduxMap = [
@@ -95,6 +90,7 @@ const arduxMap = [
 ['1-2', 'p'],
 ['1-2-3', 'd'],
 ['2-3', 'f'],
+['1-2', 'g'],
 ['5-7', 'h'],
 ['0-1', 'j'],
 ['4-6', 'k'],
@@ -112,9 +108,9 @@ const arduxMap = [
 ['0-1-2-3', 'z'],
 ];
 
-const chordMap: Map<String, String> = new Map(arduxMap);
+let chordMap: Map<String, String> = new Map(arduxMap);
 
-function parseChord(keys: Array<number>) {
+function parseChord(keys: Array<number>, chordMap) {
     return chordMap.get(keys.toSorted().join("-"));
 }
 
@@ -201,15 +197,14 @@ function keydown(event) {
     }
 }
 
-function keyup(event) {
+function keyup(event, chordMap) {
     const code = mapping.get(event.code);
     console.log("X");
     if (code != undefined) {
-
         chord.up(code);
         if (chord.isClear()) {
             const keys = chord.pressedKeys();
-            const generated = parseChord(keys);
+            const generated = parseChord(keys, chordMap);
             if (generated != undefined) {
                 text += generated;
             }
@@ -219,12 +214,12 @@ function keyup(event) {
 }
 
 const Box = {
-    view: (() => {
+    view: ((vnode) => {
         return [
             m("h1","Test input"),
             m("div", {style: {minHeight: "6ex"}}, m("input", {placeholder: "Type here", size: 50, 
                 onkeydown: ((event) => {keydown(event); event.stopPropagation(); return false;}),
-                onkeyup: ((event) => {keyup(event); event.stopPropagation(); m.redraw(); return false;}),
+                onkeyup: ((event) => {keyup(event, vnode.attrs.chordMap); event.stopPropagation(); m.redraw(); return false;}),
                 value: text,
             })),
             m("h1","Sample input"),
@@ -241,6 +236,11 @@ const Box = {
                 ])
             ]),
             m("div", ["Source: ", m('a', {href: 'https://github.com/SuperTaiyaki/chording-tester' }, 'https://github.com/SuperTaiyaki/chording-tester')]),
+             m("div", m("span", ["Change layout: ",
+                        m(m.route.Link, {href: "/taipo"}, "Taipo"),
+                        m(m.route.Link, {href: "/posh"}, "Posh"),
+                        m(m.route.Link, {href: "/ardux"}, "Ardux"),
+             ])),
         ];
     })
 }
@@ -258,8 +258,9 @@ const KeyDiagram = {
 
         return [
             m("table.minor", [
-                m("tr", [m("td.lead", {rowspan: 2}, m("h4", vnode.attrs.keysym, ))].concat(buttonStates.slice(0,4))),
-                m("tr", buttonStates.slice(4,8)),
+                m("tr", [m("td.lead", {rowspan: 2}, m("h4", vnode.attrs.keysym, ))]
+                  .concat(vnode.attrs.flip ? buttonStates.slice(0,4).toReversed() : buttonStates.slice(0,4))),
+                m("tr", vnode.attrs.flip ? buttonStates.slice(4,8).toReversed() : buttonStates.slice(4,8)),
             ]),
         ];
     })
@@ -268,56 +269,80 @@ const KeyDiagram = {
 const SingleKeyBlock = {
     view: ((vnode) => {
         let chars = vnode.attrs.chars.map((c) => m("td", c));
-        return [
-            m("table.major", [
-                m("tr", chars.slice(0,4)),
-                m("tr", chars.slice(4,8)),
-            ]),
-        ];
+        return m("table.major", [
+            // TODO: this is an ugly way to handle the flip
+                m("tr", vnode.attrs.flip ? chars.slice(0,4).toReversed(): chars.slice(0,4)),
+                m("tr", vnode.attrs.flip ? chars.slice(4,8).toReversed(): chars.slice(4,8)),
+            ]);
     })
 };
 
-const singles = chordMap.entries().filter((code) => {
-    return code[0].split("-").length == 1; // can this be single-lined?
-}).toArray(); // istoArray() necessary? I can't forEach an iterator?
 
-let singleBlock = Array(8);
-singles.forEach((x) => {
-    singleBlock[Number(x[0])] = x[1];
-});
+const KeyChart = {
+    view: ((vnode) => {
+        const allKeys = vnode.attrs.chordMap.entries().filter((code) => {
+            return code[0].split("-").length > 1; // can this be single-lined?
+        }).map((code) => 
+        m(KeyDiagram, {keysym: code[1], chord: code[0], flip: vnode.attrs.flip})
+              ).toArray();
 
-let singleKeys = m(SingleKeyBlock, {chars: singleBlock});
+          const singles = vnode.attrs.chordMap.entries().filter((code) => {
+              return code[0].split("-").length == 1; // can this be single-lined?
+          }).toArray(); // istoArray() necessary? I can't forEach an iterator?
 
-const allKeys = chordMap.entries().filter((code) => {
-    return code[0].split("-").length > 1; // can this be single-lined?
-}).map((code) => 
-    m(KeyDiagram, {keysym: code[1], chord: code[0]})
-).toArray();
+          let singleBlock = Array(8);
+          singles.forEach((x) => {
+              singleBlock[Number(x[0])] = x[1];
+          });
 
-let keyDiagram = [singleKeys].concat(allKeys);
-// TODO: Make this into a proper component and make it reversible
+        return [m(SingleKeyBlock, {chars: singleBlock, flip: vnode.attrs.flip})].concat(allKeys);
+    })
+}
 
 const App = {
-    view: (() => {
+    view: ((vnode) => {
         return m("div.app", [
-            m("div.keyDiagram", keyDiagram),
+            m("div.keyDiagram", m(KeyChart, {chordMap: vnode.attrs.chordMap, flip: false})),
             m("div.main", [
                 //m("img", {src: "/taipo.png", style: {width: "55%"}}),
-                m(Box),
+                m(Box, {chordMap: vnode.attrs.chordMap}),
             ]),
-            m("div.keyDiagram", keyDiagram),
+            m("div.keyDiagram", m(KeyChart, {chordMap: vnode.attrs.chordMap, flip: true})),
         ]);
     })
 }
 
 //m.mount(document.getElementById("app"), App);
-m.route(document.getElementById("app"), "/", {
-    "/": {
-        render: (() => m(App, {layout: 'taipo'}))
+m.route(document.getElementById("app"), "/taipo", {
+    "/taipo": {
+        render: (() => {
+            return m(App, {chordMap: new Map(taipoMap)});
+        })
     },
+    "/ardux": {
+        render: (() => {
+            return m(App, {chordMap: new Map(arduxMap)});
+        })
+    },
+    "/posh": {
+        render: (() => {
+            return m(App, {chordMap: new Map(poshMap)});
+        })
+    },
+    /*
+    "/": {
+        render: (() => {
+            // it came to this one? why?
+            return m(App, {chordMap: new Map(poshMap)});
+        })
+    },
+    */
+
+    /*
     "/:layout": {
         render: ((vnode) => m(App, {layout: vnode.attrs.layout}))
     }
+    */
 })
 
 
