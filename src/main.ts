@@ -61,6 +61,8 @@ const poshMap = [
     ['3-6', 'l'],
     ['5-7', 'c'],
     ['5-6', 'u'],
+    ['1-7', 'm'],
+    ['3-5', 'w'],
     ['1-3', 'f'],
     ['2-5', 'g'],
     ['2-3-5', 'y'],
@@ -68,7 +70,10 @@ const poshMap = [
     ['5-6-7', 'b'],
     ['2-5-7', 'v'],
     ['1-2-7', 'k'],
+    ['3-5-6', 'j'],
     ['1-6-7', 'x'],
+    ['1-5-7', 'q'],
+    ['2-6-7', 'z'],
 ] as const;
 
 const arduxMap = [
@@ -85,7 +90,7 @@ const arduxMap = [
 ['8', ' '],
 
 // two chars
-['4-7', 'b'], // this is probably sub-optimal, can this be expressed in a saner way?
+['4-7', 'b'],
 ['6-7', 'c'],
 ['1-2', 'p'],
 ['1-2-3', 'd'],
@@ -149,6 +154,7 @@ class Chord
     }
 }
 
+// TODO: split this left/right, cross hand chords aren't so useful
 const mapping = new Map([
     ['KeyQ', 0],
     ['KeyW', 1],
@@ -177,8 +183,6 @@ const mapping = new Map([
     ['KeyN', 9],
 ]);
 
-
-
 let text = "";
 let chord = new Chord()
 
@@ -197,7 +201,6 @@ function keydown(event) {
 
 function keyup(event, chordMap) {
     const code = mapping.get(event.code);
-    console.log("X");
     if (code != undefined) {
         chord.up(code);
         if (chord.isClear()) {
@@ -211,18 +214,24 @@ function keyup(event, chordMap) {
     }
 }
 
+const ChordBox = {
+    view: ((vnode) => {
+        return m("div", {style: {minHeight: "6ex"}}, m("input", {placeholder: "Type here", size: 50, 
+                onkeydown: ((event) => {keydown(event); event.stopPropagation(); return false;}),
+                onkeyup: ((event) => {keyup(event, vnode.attrs.chordMap); event.stopPropagation(); m.redraw(); return false;}),
+                value: text,
+            }))
+    })
+};
+
 const Box = {
     view: ((vnode) => {
         return [
             m("h1","Test input"),
-            m("div", {style: {minHeight: "6ex"}}, m("input", {placeholder: "Type here", size: 50, 
-                onkeydown: ((event) => {keydown(event); event.stopPropagation(); return false;}),
-                onkeyup: ((event) => {keyup(event, vnode.attrs.chordMap); event.stopPropagation(); m.redraw(); return false;}),
-                value: text,
-            })),
+            m(ChordBox, {chordMap: vnode.attrs.chordMap}),
             m("h1","Sample input"),
             m('div',
-              [m("input", {placeholder: "This is an empty text box. Use it to drop in sample text for copy typing.", size: 50, text: "htns"})]),
+              [m("input", {placeholder: "This is an empty text box. Use it to drop in sample text for copy typing.", size: 50})]),
             m("div", [
                 m('h4', "NOTES:"),
                 m('ul', [
@@ -243,7 +252,6 @@ const Box = {
     })
 }
 
-// TODO: make this flippable for the right hand too
 const KeyDiagram = {
     view: ((vnode) => {
         const keysUsed = vnode.attrs.chord;
@@ -293,7 +301,7 @@ const KeyChart = {
               singleBlock[Number(x[0])] = x[1];
           });
 
-        return [m(SingleKeyBlock, {chars: singleBlock, flip: vnode.attrs.flip})].concat(allKeys);
+          return [m(SingleKeyBlock, {chars: singleBlock, flip: vnode.attrs.flip})].concat(allKeys);
     })
 }
 
