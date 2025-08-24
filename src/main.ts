@@ -27,9 +27,6 @@ const taipoMap = [
 ['1-7', 'v'],
 ['0-7', 'm'],
 
-['1-6', '/'],
-['0-5', ';'],
-['2-7', ','],
 
 ['2-3', 'y'],
 ['6-7', 'h'],
@@ -40,6 +37,10 @@ const taipoMap = [
 ['3-5', 'k'],
 ['2-4', 'j'],
 ['3-4', 'w'],
+
+['1-6', '/'],
+['0-5', ';'],
+['2-7', ','],
 
 ['2-5', '-'],
 ['3-6', '?'],
@@ -87,8 +88,6 @@ const arduxMap = [
 ['6', 'y'],
 ['7', 'e'],
 
-['8', ' '],
-
 // two chars
 ['4-7', 'b'],
 ['6-7', 'c'],
@@ -111,6 +110,9 @@ const arduxMap = [
 ['0-3', 'w'],
 ['0-1-2', 'x'],
 ['0-1-2-3', 'z'],
+
+['4-5-6-7', ' '],
+['1-2-3-4', "BACKSPACE"]
 ] as const;
 
 function parseChord(keys: Array<number>, chordMap) {
@@ -207,7 +209,11 @@ function keyup(event, chordMap) {
             const keys = chord.pressedKeys();
             const generated = parseChord(keys, chordMap);
             if (generated != undefined) {
-                text += generated;
+                if (generated == "BACKSPACE") {
+                    text = text.slice(0, -1);
+                } else {
+                    text += generated;
+                }
             }
             chord.reset();
         }
@@ -216,7 +222,7 @@ function keyup(event, chordMap) {
 
 const ChordBox = {
     view: ((vnode) => {
-        return m("div", {style: {minHeight: "6ex"}}, m("input", {placeholder: "Type here", size: 50, 
+        return m("div", {style: {minHeight: "6ex"}}, m("input", {placeholder: "Type here using chorded inputs", size: 50, 
                 onkeydown: ((event) => {keydown(event); event.stopPropagation(); return false;}),
                 onkeyup: ((event) => {keyup(event, vnode.attrs.chordMap); event.stopPropagation(); m.redraw(); return false;}),
                 value: text,
@@ -244,9 +250,10 @@ const Box = {
             ]),
             m("div", ["Source: ", m('a', {href: 'https://github.com/SuperTaiyaki/chording-tester' }, 'https://github.com/SuperTaiyaki/chording-tester')]),
              m("div", m("span", ["Change layout: ",
-                        m(m.route.Link, {href: "/taipo"}, "Taipo"),
-                        m(m.route.Link, {href: "/posh"}, "Posh"),
-                        m(m.route.Link, {href: "/ardux"}, "Ardux"),
+                        m("p", [ m(m.route.Link, {href: "/taipo"}, "Taipo"), " (4 keys + 2 modifiers)"]),
+                        m("p", [ m(m.route.Link, {href: "/posh"}, "Posh"), " (3 keys + 2 modifiers - no pinkies)"]),
+                        m("p", [ m(m.route.Link, {href: "/ardux"}, "Ardux"), " (8 keys, no modifiers)"]),
+                        m("p", ["Keymaps are taken from ", m("a", {href: "https://inkeys.wiki/en/keymaps"}, "inclusive keyboards")]),
              ])),
         ];
     })
@@ -274,7 +281,7 @@ const KeyDiagram = {
 
 const SingleKeyBlock = {
     view: ((vnode) => {
-        let chars = vnode.attrs.chars.map((c) => m("td", c));
+        let chars = vnode.attrs.chars.map((c) => m("td", m("h4", c)));
         return m("table.major", [
             // TODO: this is an ugly way to handle the flip
                 m("tr", vnode.attrs.flip ? chars.slice(0,4).toReversed(): chars.slice(0,4)),
