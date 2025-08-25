@@ -91,7 +91,6 @@ const arduxMap = [
 // two chars
 ['4-7', 'b'],
 ['6-7', 'c'],
-['1-2', 'p'],
 ['1-2-3', 'd'],
 ['2-3', 'f'],
 ['1-2', 'g'],
@@ -114,6 +113,44 @@ const arduxMap = [
 ['4-5-6-7', ' '],
 ['1-2-3-4', "BACKSPACE"]
 ] as const;
+
+const artseyMap = [
+// 1 char
+['0', 's'],
+['1', 't'],
+['2', 'r'],
+['3', 'a'],
+['4', 'o'],
+['5', 'i'],
+['6', 'y'],
+['7', 'e'],
+
+// two chars
+['4-7', 'b'],
+['6-7', 'c'],
+['1-2-3', 'd'],
+['2-3', 'f'],
+['1-2', 'g'],
+['5-7', 'h'],
+['0-1', 'j'],
+['4-6', 'k'],
+['5-6-7', 'l'],
+
+['4-5-6', 'm'],
+['4-5', 'n'],
+['4-5-7', 'p'],
+
+['0-1-3', 'q'],
+['5-6', 'u'],
+['0-2', 'v'],
+['0-3', 'w'],
+['0-1-2', 'x'],
+['0-1-2-3', 'z'],
+
+['4-5-6-7', ' '],
+['2-7', "BACKSPACE"]
+] as const;
+
 
 function parseChord(keys: Array<number>, chordMap) {
     return chordMap.get(keys.toSorted().join("-"));
@@ -157,7 +194,7 @@ class Chord
 }
 
 // TODO: split this left/right, cross hand chords aren't so useful
-const mapping = new Map([
+const mappings = [new Map([
     ['KeyQ', 0],
     ['KeyW', 1],
     ['KeyE', 2],
@@ -170,7 +207,8 @@ const mapping = new Map([
 
     ['KeyV', 8],
     ['KeyB', 9],
-
+]),
+new Map([
     ['KeyP', 0],
     ['KeyO', 1],
     ['KeyI', 2],
@@ -183,41 +221,45 @@ const mapping = new Map([
 
     ['KeyM', 8], //mod
     ['KeyN', 9],
-]);
+])];
 
 let text = "";
-let chord = new Chord()
+let chords = [new Chord(), new Chord()]
 
 function keydown(event) {
-    const code = mapping.get(event.code);
-    if (code != undefined && event.repeat == false) {
-        chord.down(code);
-    }
-    if (event.code == "Space" && event.repeat == false) {
-        text += (" ");
-    }
-    if (event.code == "Backspace") {
-        text = text.slice(0, -1);
-    }
+    mappings.forEach((m, i) => {
+        const code = m.get(event.code);
+        if (code != undefined && event.repeat == false) {
+            chords[i].down(code);
+        }
+        if (event.code == "Space" && event.repeat == false) {
+            text += (" ");
+        }
+        if (event.code == "Backspace") {
+            text = text.slice(0, -1);
+        }
+    });
 }
 
 function keyup(event, chordMap) {
-    const code = mapping.get(event.code);
-    if (code != undefined) {
-        chord.up(code);
-        if (chord.isClear()) {
-            const keys = chord.pressedKeys();
-            const generated = parseChord(keys, chordMap);
-            if (generated != undefined) {
-                if (generated == "BACKSPACE") {
-                    text = text.slice(0, -1);
-                } else {
-                    text += generated;
+    mappings.forEach((m, i) => {
+        const code = m.get(event.code);
+        if (code != undefined) {
+            chords[i].up(code);
+            if (chords[i].isClear()) {
+                const keys = chords[i].pressedKeys();
+                const generated = parseChord(keys, chordMap);
+                if (generated != undefined) {
+                    if (generated == "BACKSPACE") {
+                        text = text.slice(0, -1);
+                    } else {
+                        text += generated;
+                    }
                 }
+                chords[i].reset();
             }
-            chord.reset();
         }
-    }
+    });
 }
 
 const ChordBox = {
@@ -253,6 +295,8 @@ const Box = {
                         m("p", [ m(m.route.Link, {href: "/taipo"}, "Taipo"), " (4 keys + 2 modifiers)"]),
                         m("p", [ m(m.route.Link, {href: "/posh"}, "Posh"), " (3 keys + 2 modifiers - no pinkies)"]),
                         m("p", [ m(m.route.Link, {href: "/ardux"}, "Ardux"), " (8 keys, no modifiers)"]),
+                        //m("p", [ m(m.route.Link, {href: "/artsey"}, "Artsey"), " (8 keys, no modifiers)"]),
+                        // disabling Artsey because the main map is the same as Ardux
                         m("p", ["Keymaps are taken from ", m("a", {href: "https://inkeys.wiki/en/keymaps"}, "inclusive keyboards")]),
              ])),
         ];
@@ -342,6 +386,12 @@ m.route(document.getElementById("app"), "/taipo", {
             return m(App, {chordMap: new Map(poshMap)});
         })
     },
+    "/artsey": {
+        render: (() => {
+            return m(App, {chordMap: new Map(artseyMap)});
+        })
+    },
+
     /*
     "/": {
         render: (() => {
