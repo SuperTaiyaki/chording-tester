@@ -1,5 +1,8 @@
 
 import m from "mithril";
+import wordlist from "./wordlist";
+
+import Typer from "./models/typer";
 
 import './style.css';
 
@@ -161,6 +164,8 @@ class Chord
 {
     pressed: boolean[] = []
     keys: number[] = []
+    releasing = false
+
     constructor() {
         for (let i = 0;i < 10; i++) { // TODO: sync this to the max number of keys defined in the keymap!
             this.keys[i] = 0;
@@ -168,16 +173,22 @@ class Chord
         }
     }
 
+    isClear(): boolean {
+        return this.keys.every((it) => it == 0)
+    }
+
     down(keycode: number) {
         this.keys[keycode] += 1;
         this.pressed[keycode] = true
+        this.releasing = false
     }
     up(keycode: number) {
         this.keys[keycode] -= 1;
-    }
+        this.pressed[keycode] = false
 
-    isClear(): boolean {
-        return this.keys.every((it) => it == 0)
+        if (!this.isClear()) {
+            this.releasing = true
+        }
     }
 
     pressedKeys(): Array<number> {
@@ -232,32 +243,37 @@ function keydown(event) {
         if (code != undefined && event.repeat == false) {
             chords[i].down(code);
         }
-        if (event.code == "Space" && event.repeat == false) {
-            text += (" ");
-        }
-        if (event.code == "Backspace") {
-            text = text.slice(0, -1);
-        }
     });
+    if (event.code == "Space" && event.repeat == false) {
+        Typer.text += (" ");
+    }
+    if (event.code == "Backspace" && event.repeat == false) {
+        Typer.text = Typer.text.slice(0, -1);
+    }
 }
 
 function keyup(event, chordMap) {
     mappings.forEach((m, i) => {
         const code = m.get(event.code);
         if (code != undefined) {
-            chords[i].up(code);
-            if (chords[i].isClear()) {
+            console.debug(chords[i].pressed);
+            let releasing = chords[i].releasing; // will be reset by the .up()
+            // so this is the step where we need the direction check
+            // ARGH need to move more of this logic into the Chord class...
+            if (!releasing/*chords[i].isClear()*/) {
                 const keys = chords[i].pressedKeys();
                 const generated = parseChord(keys, chordMap);
                 if (generated != undefined) {
                     if (generated == "BACKSPACE") {
-                        text = text.slice(0, -1);
+                        // this is different to the direct key backspace above
+                        Typer.text = Typer.text.slice(0, -1);
                     } else {
-                        text += generated;
+                        Typer.text += generated;
                     }
                 }
-                chords[i].reset();
+                //chords[i].reset();
             }
+            chords[i].up(code);
         }
     });
 }
@@ -266,8 +282,13 @@ const ChordBox = {
     view: ((vnode) => {
         return m("div", {style: {minHeight: "6ex"}}, m("input", {placeholder: "Type here using chorded inputs", size: 50, 
                 onkeydown: ((event) => {keydown(event); event.stopPropagation(); return false;}),
-                onkeyup: ((event) => {keyup(event, vnode.attrs.chordMap); event.stopPropagation(); m.redraw(); return false;}),
-                value: text,
+                onkeyup: ((event) => {
+                    keyup(event, vnode.attrs.chordMap);
+                    event.stopPropagation();
+                    m.redraw();
+                    return false;
+                }),
+                value: Typer.text,
             }))
     })
 };
@@ -356,6 +377,66 @@ const KeyChart = {
     })
 }
 
+function shuffleArray(inArray) {
+    let array = [...inArray];
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+}
+
+function TypingTest(initialVnode) {
+    let words = shuffleArray(wordlist);
+    let wordIndex;
+    let lineIndex;
+
+    let currentTarget;
+    let nextTarget;
+    let currentWord;
+    let text = "";
+
+    function nextLine() {
+        wordIndex += 10;
+        return words.slice(wordIndex - 10, wordIndex);
+    }
+
+    function nextWord() {
+        wordIndex += 1;
+        currentWord = currentTarget[wordIndex];
+    }
+
+    return {
+        oninit: (() => {
+            words = [...words];
+            wordIndex = 10;
+
+            currentTarget = nextLine(); 
+            nextTarget = nextLine();
+
+            lineIndex = 0;
+            currentWord = currentTarget[lineIndex];
+
+
+        }),
+        view: ((vnode) => {
+            // activating this under view() is wrong but anyway
+            if (currentWord == Typer.text) {
+                Typer.text = "";
+                lineIndex += 1;
+                currentWord = currentTarget[lineIndex];
+            }
+            let color = currentWord.startsWith(Typer.text) ?  "green" : "red";
+            // need to get the text value out of the chordbox, can I pass a variable in like in react?
+            // and then... get updates to work on it? no idea if updates will trigger correctly on this
+            return [m(ChordBox, {chordMap: vnode.attrs.chordMap}),
+                m("p", {style: {backgroundColor: color}}, currentWord),
+                m("p", currentTarget.map((word) => m("span", word + " "))),
+            ];
+        })
+    }
+}
+
 const App = {
     view: ((vnode) => {
         return m("div.app", [
@@ -363,6 +444,7 @@ const App = {
             m("div.main", [
                 //m("img", {src: "/taipo.png", style: {width: "55%"}}),
                 m(Box, {chordMap: vnode.attrs.chordMap}),
+                m(TypingTest, {chordMap: vnode.attrs.chordMap}),
             ]),
             m("div.keyDiagram", m(KeyChart, {chordMap: vnode.attrs.chordMap, flip: true})),
         ]);
