@@ -6,6 +6,17 @@ import Typer from "./models/typer";
 
 import './style.css';
 
+// not a very typescript way to do this (maybe)
+// not very different to a regular class, in the end... ugh.
+const MString = (() => ({text: ""}));
+const MStringActions = ((state) =>  {
+    return {
+        append: ((c) => { state.text += c ;}),
+        backspace: (() => {state.text = state.text.slice(0, -1);}),
+        clear: (() => {state.text = "";}),
+        set: ((t) => {state.text = t;})
+}});
+
 const taipoMap = [
 // 1 char
 ['0', 'r'],
@@ -49,6 +60,52 @@ const taipoMap = [
 ['3-6', '?'],
 ['1-4', '\''],
 ] as const;
+
+const modifiedTaipoMap = [
+// 1 char
+['0', 'r'],
+['1', 's'],
+['2', 'n'],
+['3', 'i'],
+['4', 'a'],
+['5', 'o'],
+['6', 't'],
+['7', 'e'],
+
+['8', ' '],
+
+// two chars
+['0-1', 'b'],
+['4-5', 'l'],
+['1-2', 'p'],
+['0-3', 'g'],
+['0-2', 'w'],
+['4-6', 'm'],
+['0-6', 'x'],
+['1-7', 'v'],
+['0-7', 'z'],
+
+['2-3', 'y'],
+['6-7', 'h'],
+['5-6', 'u'],
+['4-7', 'd'],
+['1-3', 'f'],
+['5-7', 'c'],
+['3-5', 'k'],
+['2-4', 'j'],
+['3-4', 'q'],
+
+['1-6', '/'],
+['0-5', ';'],
+['2-7', ','],
+
+['2-5', '-'],
+['3-6', '?'],
+['1-4', '\''],
+
+['0-1-2-3', 'BACKSPACE'],
+] as const;
+
 
 const poshMap = [
     ['7', 'e'],
@@ -236,7 +293,7 @@ new Map([
 
 let chords = [new Chord(), new Chord()]
 
-function keydown(event) {
+function keydown(event, actions) {
     mappings.forEach((m, i) => {
         const code = m.get(event.code);
         if (code != undefined && event.repeat == false) {
@@ -244,30 +301,27 @@ function keydown(event) {
         }
     });
     if (event.code == "Space" && event.repeat == false) {
-        Typer.text += (" ");
+        actions.append(" ");
     }
     if (event.code == "Backspace" && event.repeat == false) {
-        Typer.text = Typer.text.slice(0, -1);
+        actions.backspace();
     }
 }
 
-function keyup(event, chordMap) {
+function keyup(event, chordMap, actions) {
     mappings.forEach((m, i) => {
         const code = m.get(event.code);
         if (code != undefined) {
-            console.debug(chords[i].pressed);
-            let releasing = chords[i].releasing; // will be reset by the .up()
-            // so this is the step where we need the direction check
             // ARGH need to move more of this logic into the Chord class...
-            if (!releasing/*chords[i].isClear()*/) {
+            if (!chords[i].releasing/*chords[i].isClear()*/) {
                 const keys = chords[i].pressedKeys();
                 const generated = parseChord(keys, chordMap);
                 if (generated != undefined) {
                     if (generated == "BACKSPACE") {
                         // this is different to the direct key backspace above
-                        Typer.text = Typer.text.slice(0, -1);
+                        actions.backspace();
                     } else {
-                        Typer.text += generated;
+                        actions.append(generated);
                     }
                 }
                 //chords[i].reset();
@@ -277,50 +331,65 @@ function keyup(event, chordMap) {
     });
 }
 
-const ChordBox = {
+// maybe this can be returned to a const
+const ChordBox =  {
     view: ((vnode) => {
         return m("div", {style: {minHeight: "6ex"}}, m("input", {placeholder: "Type here using chorded inputs", size: 50, 
-                onkeydown: ((event) => {keydown(event); event.stopPropagation(); return false;}),
+                   // GRRRR pressing keys in here seems to kick the focus away and the keyup never comes. Why???
+                                                       // because the component is being recreated...?
+                onkeydown: ((event) => {
+                    keydown(event, vnode.attrs.actions);
+                    event.stopPropagation();
+                    return false;
+                }),
+                
                 onkeyup: ((event) => {
-                    keyup(event, vnode.attrs.chordMap);
+                    keyup(event, vnode.attrs.chordMap, vnode.attrs.actions);
                     event.stopPropagation();
                     m.redraw();
                     return false;
                 }),
-                value: Typer.text,
+                value: vnode.attrs.state.text,
             }))
     })
 };
 
-const Box = {
-    view: ((vnode) => {
-        return [
-            m("h1","Test input"),
-            m(ChordBox, {chordMap: vnode.attrs.chordMap}),
-            m("h1","Sample input"),
-            m('div',
-              [m("input", {placeholder: "This is an empty text box. Use it to drop in sample text for copy typing.", size: 50})]),
-            m("div", [
-                m('h4', "NOTES:"),
-                m('ul', [
-                    m('li', 'Keys are mapped to the home row (real A for a, real F for e, real U-P and J-semicolon)'),
-                    m('li', 'Only the 1 and 2 character codes in the main table are implemented (no numbers, modifiers, etc).'),
-                    m('li', 'Enter and tab are not implemented'),
-                    m('li', 'Thumb modifiers are not implemented'),
-                    m('li', 'Space is space bar, backspace is backspace'),
-                ])
-            ]),
-            m("div", ["Source: ", m('a', {href: 'https://github.com/SuperTaiyaki/chording-tester' }, 'https://github.com/SuperTaiyaki/chording-tester')]),
-             m("div", m("span", ["Change layout: ",
-                        m("p", [ m(m.route.Link, {href: "/taipo"}, "Taipo"), " (4 keys + 2 modifiers)"]),
-                        m("p", [ m(m.route.Link, {href: "/posh"}, "Posh"), " (3 keys + 2 modifiers - no pinkies)"]),
-                        m("p", [ m(m.route.Link, {href: "/ardux"}, "Ardux"), " (8 keys, no modifiers)"]),
-                        //m("p", [ m(m.route.Link, {href: "/artsey"}, "Artsey"), " (8 keys, no modifiers)"]),
-                        // disabling Artsey because the main map is the same as Ardux
-                        m("p", ["Keymaps are taken from ", m("a", {href: "https://inkeys.wiki/en/keymaps"}, "inclusive keyboards")]),
-             ])),
-        ];
-    })
+function Box() { 
+
+    let currentText = MString();
+    let actions = MStringActions(currentText);
+
+    return {
+        view: ((vnode) => {
+            return [
+                m("h1","Test input"),
+                m(ChordBox, {chordMap: vnode.attrs.chordMap, state: currentText, actions: actions}),
+                m("h1","Sample input"),
+                m('div',
+                  [m("input", {placeholder: "This is an empty text box. Use it to drop in sample text for copy typing.", size: 50})]),
+                m("div", [
+                    m('h4', "NOTES:"),
+                    m('ul', [
+                        m('li', 'Keys are mapped to the home row (real A for a, real F for e, real U-P and J-semicolon)'),
+                        m('li', 'Only the 1 and 2 character codes in the main table are implemented (no numbers, modifiers, etc).'),
+                        m('li', 'Enter and tab are not implemented'),
+                        m('li', 'Thumb modifiers are not implemented'),
+                        m('li', 'Space is space bar, backspace is backspace'),
+                    ])
+                ]),
+                m("div", ["Source: ", m('a', {href: 'https://github.com/SuperTaiyaki/chording-tester' }, 'https://github.com/SuperTaiyaki/chording-tester')]),
+                 m("div", m("span", ["Change layout: ",
+                            m("p", [ m(m.route.Link, {href: "/taipo"}, "Taipo"), " (4 keys + 2 modifiers)"]),
+                            m("p", [ m(m.route.Link, {href: "/posh"}, "Posh"), " (3 keys + 2 modifiers - no pinkies)"]),
+                            m("p", [ m(m.route.Link, {href: "/ardux"}, "Ardux"), " (8 keys, no modifiers)"]),
+                            m("p", [ m(m.route.Link, {href: "/taipo2"}, "Modified Taipo"), " (Taipo with the layout I use in hardware)"]),
+                            //m("p", [ m(m.route.Link, {href: "/artsey"}, "Artsey"), " (8 keys, no modifiers)"]),
+                            // disabling Artsey because the main map is the same as Ardux
+                            m("p", ["Keymaps are taken from ", m("a", {href: "https://inkeys.wiki/en/keymaps"}, "inclusive keyboards")]),
+                 ])),
+            ];
+        })
+    }
 }
 
 const KeyDiagram = {
@@ -393,6 +462,9 @@ function TypingTest(_initialVnode) {
     let currentTarget;
     let currentWord;
 
+    let currentText = MString();
+    let actions = MStringActions(currentText);
+
     function nextLine() {
         wordIndex += 10;
         return words.slice(wordIndex - 10, wordIndex);
@@ -412,15 +484,19 @@ function TypingTest(_initialVnode) {
         }),
         view: ((vnode) => {
             // activating this under view() is wrong but anyway
-            if (currentWord == Typer.text) {
-                Typer.text = "";
+            let entered = currentText.text;
+
+            if (currentWord == entered) {
+                actions.clear();
                 lineIndex += 1;
                 currentWord = currentTarget[lineIndex];
             }
-            let color = currentWord.startsWith(Typer.text) ?  "green" : "red";
+            let color = currentWord.startsWith(entered) ?  "green" : "red";
             // need to get the text value out of the chordbox, can I pass a variable in like in react?
             // and then... get updates to work on it? no idea if updates will trigger correctly on this
-            return [m(ChordBox, {chordMap: vnode.attrs.chordMap}),
+            return [
+                m("h1", "Typing prompt"),
+                m(ChordBox, {chordMap: vnode.attrs.chordMap, state: currentText, actions: actions}),
                 m("p", {style: {backgroundColor: color}}, currentWord),
                 m("p", currentTarget.map((word) => m("span", word + " "))),
             ];
@@ -462,6 +538,11 @@ m.route(document.getElementById("app"), "/taipo", {
     "/artsey": {
         render: (() => {
             return m(App, {chordMap: new Map(artseyMap)});
+        })
+    },
+    "/taipo2": {
+        render: (() => {
+            return m(App, {chordMap: new Map(modifiedTaipoMap)});
         })
     },
 
