@@ -234,7 +234,6 @@ new Map([
     ['KeyN', 9],
 ])];
 
-let text = "";
 let chords = [new Chord(), new Chord()]
 
 function keydown(event) {
@@ -386,24 +385,17 @@ function shuffleArray(inArray) {
     return array;
 }
 
-function TypingTest(initialVnode) {
+function TypingTest(_initialVnode) {
     let words = shuffleArray(wordlist);
     let wordIndex;
     let lineIndex;
 
     let currentTarget;
-    let nextTarget;
     let currentWord;
-    let text = "";
 
     function nextLine() {
         wordIndex += 10;
         return words.slice(wordIndex - 10, wordIndex);
-    }
-
-    function nextWord() {
-        wordIndex += 1;
-        currentWord = currentTarget[wordIndex];
     }
 
     return {
@@ -412,7 +404,6 @@ function TypingTest(initialVnode) {
             wordIndex = 10;
 
             currentTarget = nextLine(); 
-            nextTarget = nextLine();
 
             lineIndex = 0;
             currentWord = currentTarget[lineIndex];
