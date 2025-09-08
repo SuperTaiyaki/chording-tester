@@ -2,8 +2,6 @@
 import m from "mithril";
 import wordlist from "./wordlist";
 
-import Typer from "./models/typer";
-
 import './style.css';
 
 // not a very typescript way to do this (maybe)
