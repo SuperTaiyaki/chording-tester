@@ -487,6 +487,10 @@ function TypingTest(_initialVnode) {
             if (currentWord == entered) {
                 actions.clear();
                 lineIndex += 1;
+                if (lineIndex == 10) {
+                    currentTarget = nextLine();
+                    lineIndex = 0;
+                }
                 currentWord = currentTarget[lineIndex];
             }
             let color = currentWord.startsWith(entered) ?  "green" : "red";
