@@ -625,7 +625,7 @@ function TypingTest(_initialVnode) {
                 }
                 currentWord = currentTarget[lineIndex];
             }
-            let color = currentWord.startsWith(entered) ?  "green" : "red";
+            let color = currentWord.startsWith(entered) ?  "#75ff75" : "#ff9b9b";
             // need to get the text value out of the chordbox, can I pass a variable in like in react?
             // and then... get updates to work on it? no idea if updates will trigger correctly on this
             return [
