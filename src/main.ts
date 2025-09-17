@@ -107,6 +107,13 @@ const modifiedTaipoMap = [
 ['0-1-2-3', 'BACKSPACE'],
 ] as const;
 
+const taipo2Memo = `
+After practing with Taipo I decided I didn't like diagonal keys
+and the result is this layout. It introduces 3-character chords
+to make sure every character is entirely on a single row. Overall
+effect on efficiency doesn't seem to be huge.
+`;
+
 
 const poshMap = [
     ['7', 'e'],
@@ -212,6 +219,87 @@ const artseyMap = [
 ['2-7', "BACKSPACE"]
 ] as const;
 
+const cykeyMap = [
+['7-9', 'i'],
+['4-7-9', 'l'],
+['4-5', 'g'],
+['4-5-9', 'j'],
+['5-7', 't'],
+['4-9', 'h'],
+['7', 'e'],
+['6', 'o'],
+['5', 's'],
+['4', 'u'],
+['6-7', 'a'],
+['5-6', 'n'],
+['5-7-9', 'r'],
+['5-9', 'k'],
+['5-6-7-9', 'f'],
+['4-5-6-7', 'm'],
+['6-7-9', 'd'],
+['4-5-6', 'b'],
+['6-9', 'c'],
+['4-6', 'q'],
+['4-5-6-7-9', 'p'],
+['4-7', 'v'],
+['5-6-9', 'y'],
+['4-5-6-9', 'x'],
+['4-5-7-9', 'w'],
+['4-6-9', 'z'],
+['9', ' '],
+['8', 'BACKSPACE'],
+] as const;
+
+const cykeyMemo = `
+Space can be used as the primary thumb key for the left hand only.
+
+This is easier to remember using the MicroWriter documentation. 
+Mnemonics are provided for all letters.
+
+Several keys
+seem to be selected for memorability rather than efficiency. Still, as there's
+no finger movement for regular typing it doesn't have a huge effect.
+
+`;
+
+const cykeyMap2 = [
+['7-9', 'i'],
+['4-7-9', 'l'],
+['4-5', 'g'],
+['4-5-9', 'j'],
+['5-7', 't'],
+['4-9', 'h'],
+['7', 'e'],
+['6', 'o'],
+['5', 's'],
+['4', 'a'],
+['6-7', 'u'],
+['5-6', 'n'],
+['5-7-9', 'm'],
+['5-9', 'k'],
+['5-6-7-9', 'f'],
+['4-5-6-7', 'z'],
+['6-7-9', 'd'],
+['4-5-6', 'b'],
+['6-9', 'c'],
+['4-6', 'r'],
+['4-5-6-7-9', 'q'],
+['4-7', 'p'],
+['5-6-9', 'y'],
+['4-5-6-9', 'x'],
+['4-5-7-9', 'w'],
+['4-6-9', 'm'],
+['9', ' '],
+['5-8', 'BACKSPACE'],
+] as const;
+
+const cykey2Memo = `
+Space can be used as the primary thumb key for the left hand only.
+After practing with stardard CyKey I changed a few things around, mostly to reduce
+the number of fingers required for common letters.
+A and U are swapped (single-letter A), R and P are reduced to 2 fingers, 
+    other keys are shuffled to make them fit.
+`;
 
 function parseChord(keys: Array<number>, chordMap) {
     return chordMap.get(keys.toSorted().join("-"));
@@ -276,6 +364,7 @@ const mappings = [new Map([
 
     ['KeyV', 8],
     ['KeyB', 9],
+    ['Space', 9],
 ]),
 new Map([
     ['KeyP', 0],
@@ -290,6 +379,7 @@ new Map([
 
     ['KeyM', 8], //mod
     ['KeyN', 9],
+    //['Space', 9],
 ])];
 
 let chords = [new Chord(), new Chord()]
@@ -301,20 +391,28 @@ function keydown(event, actions) {
             chords[i].down(code);
         }
     });
-    if (event.code == "Space" && event.repeat == false) {
-        actions.append(" ");
-    }
     if (event.code == "Backspace" && event.repeat == false) {
         actions.backspace();
     }
 }
 
 function keyup(event, chordMap, actions) {
+    let activated = false;
     mappings.forEach((m, i) => {
         const code = m.get(event.code);
-        if (code != undefined) {
+        if (activated) {
+            // This is a terrible unreliable mess to get around the doubled-up spacebar.
+            // A single space triggers things on both sides, so if the left side triggers a combo
+            // the ride side just gets outright killed.
+            // If you try to bridge too fast across hands this will break horribly...
+            if (i == 1) {
+                chords[i ^ 1].reset();
+            }
+            return;
+        }
+        if (code != undefined && !activated) {
             // ARGH need to move more of this logic into the Chord class...
-            if (!chords[i].releasing/*chords[i].isClear()*/) {
+            if (!chords[i].releasing) {
                 const keys = chords[i].pressedKeys();
                 const generated = parseChord(keys, chordMap);
                 if (generated != undefined) {
@@ -324,6 +422,7 @@ function keyup(event, chordMap, actions) {
                     } else {
                         actions.append(generated);
                     }
+                    activated = true;
                 }
                 //chords[i].reset();
             }
@@ -371,7 +470,7 @@ function Box() {
                 m("div", [
                     m('h4', "NOTES:"),
                     m('ul', [
-                        m('li', 'Keys are mapped to the home row (real A for a, real F for e, real U-P and J-semicolon)'),
+                        m('li', 'Keys are mapped to the home row (real A for a, real F for e, real U-P and J-semicolon, VB/NM for thumbs)'),
                         m('li', 'Only the 1 and 2 character codes in the main table are implemented (no numbers, modifiers, etc).'),
                         m('li', 'Enter and tab are not implemented'),
                         m('li', 'Thumb modifiers are not implemented'),
@@ -384,6 +483,8 @@ function Box() {
                             m("p", [ m(m.route.Link, {href: "/posh"}, "Posh"), " (3 keys + 2 modifiers - no pinkies)"]),
                             m("p", [ m(m.route.Link, {href: "/ardux"}, "Ardux"), " (8 keys, no modifiers)"]),
                             m("p", [ m(m.route.Link, {href: "/taipo2"}, "Modified Taipo"), " (Taipo with the layout I use in hardware)"]),
+                            m("p", [ m(m.route.Link, {href: "/cykey"}, "Cykey"), " CyKey layout (Microwriter)"]),
+                            m("p", [ m(m.route.Link, {href: "/cykey2"}, "Modified Cykey"), " CyKey with modifications for better flow"]),
                             //m("p", [ m(m.route.Link, {href: "/artsey"}, "Artsey"), " (8 keys, no modifiers)"]),
                             // disabling Artsey because the main map is the same as Ardux
                             m("p", ["Keymaps are taken from ", m("a", {href: "https://inkeys.wiki/en/keymaps"}, "inclusive keyboards")]),
@@ -413,6 +514,31 @@ const KeyDiagram = {
     })
 }
 
+const FlatKeyDiagram = {
+    view: ((vnode) => {
+        // this is basically only for the CyKey layout, so 4-5-6-7-9
+        const keysUsed = vnode.attrs.chord;
+
+        const buttonStates = Array(10);
+        buttonStates.fill(0, 0, 10); // Array(8) doesn't iterate in forEach!
+        buttonStates.forEach((_, i) => {
+           buttonStates[i]  = m('td', {class: (keysUsed.includes(String(i)) ? "O" : "X")}, "_");
+        }); // TODO: this probably requires a cleanup...
+
+        const strip = buttonStates.slice(4,8);
+        strip.push(buttonStates[9]);
+        strip.push(buttonStates[8]);
+
+        return [
+            m("table.minor", [
+                m("tr", [m("td.lead", m("h4", vnode.attrs.keysym, ))]
+                  .concat(vnode.attrs.flip ? strip.toReversed() : strip)),
+            ]),
+        ];
+    })
+}
+
+
 const SingleKeyBlock = {
     view: ((vnode) => {
         let chars = vnode.attrs.chars.map((c) => m("td", m("h4", c)));
@@ -427,10 +553,11 @@ const SingleKeyBlock = {
 
 const KeyChart = {
     view: ((vnode) => {
+        
         const allKeys = vnode.attrs.chordMap.entries().filter((code) => {
             return code[0].split("-").length > 1; // can this be single-lined?
         }).map((code) => 
-        m(KeyDiagram, {keysym: code[1], chord: code[0], flip: vnode.attrs.flip})
+        m(vnode.attrs.diagram, {keysym: code[1], chord: code[0], flip: vnode.attrs.flip})
               ).toArray();
 
           const singles = vnode.attrs.chordMap.entries().filter((code) => {
@@ -445,6 +572,8 @@ const KeyChart = {
           return [m(SingleKeyBlock, {chars: singleBlock, flip: vnode.attrs.flip})].concat(allKeys);
     })
 }
+
+
 
 function shuffleArray(inArray) {
     let array = [...inArray];
@@ -512,13 +641,15 @@ function TypingTest(_initialVnode) {
 const App = {
     view: ((vnode) => {
         return m("div.app", [
-            m("div.keyDiagram", m(KeyChart, {chordMap: vnode.attrs.chordMap, flip: false})),
+            m("div.keyDiagram", m(KeyChart, {chordMap: vnode.attrs.chordMap, flip: false, diagram: vnode.attrs.diagram})),
             m("div.main", [
                 //m("img", {src: "/taipo.png", style: {width: "55%"}}),
                 m(Box, {chordMap: vnode.attrs.chordMap}),
+                vnode.attrs.memo ? m("h2", "Layout Notes") : "",
+                m("p", vnode.attrs.memo),
                 m(TypingTest, {chordMap: vnode.attrs.chordMap}),
             ]),
-            m("div.keyDiagram", m(KeyChart, {chordMap: vnode.attrs.chordMap, flip: true})),
+            m("div.keyDiagram", m(KeyChart, {chordMap: vnode.attrs.chordMap, flip: true, diagram: vnode.attrs.diagram})),
         ]);
     })
 }
@@ -527,29 +658,40 @@ const App = {
 m.route(document.getElementById("app"), "/taipo", {
     "/taipo": {
         render: (() => {
-            return m(App, {chordMap: new Map(taipoMap)});
+            return m(App, {chordMap: new Map(taipoMap), diagram: KeyDiagram});
         })
     },
     "/ardux": {
         render: (() => {
-            return m(App, {chordMap: new Map(arduxMap)});
+            return m(App, {chordMap: new Map(arduxMap), diagram: KeyDiagram});
         })
     },
     "/posh": {
         render: (() => {
-            return m(App, {chordMap: new Map(poshMap)});
+            return m(App, {chordMap: new Map(poshMap), diagram: KeyDiagram});
         })
     },
     "/artsey": {
         render: (() => {
-            return m(App, {chordMap: new Map(artseyMap)});
+            return m(App, {chordMap: new Map(artseyMap), diagram: KeyDiagram});
         })
     },
     "/taipo2": {
         render: (() => {
-            return m(App, {chordMap: new Map(modifiedTaipoMap)});
+            return m(App, {chordMap: new Map(modifiedTaipoMap), diagram: KeyDiagram, memo: taipo2Memo});
         })
     },
+    "/cykey": {
+        render: (() => {
+            return m(App, {chordMap: new Map(cykeyMap), diagram: FlatKeyDiagram, memo: cykeyMemo});
+        })
+    },
+    "/cykey2": {
+        render: (() => {
+            return m(App, {chordMap: new Map(cykeyMap2), diagram: FlatKeyDiagram, memo: cykey2Memo});
+        })
+    },
+
 
     /*
     "/": {
