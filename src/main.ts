@@ -2,6 +2,9 @@
 import m from "mithril";
 import wordlist from "./wordlist";
 
+import TouchScreen from './touch.ts';
+import Chord from './chord.ts';
+
 import './style.css';
 
 // not a very typescript way to do this (maybe)
@@ -275,7 +278,7 @@ const cykeyMap2 = [
 ['4', 'a'],
 ['6-7', 'u'],
 ['5-6', 'n'],
-['5-7-9', 'm'],
+['5-7-9', 'v'],
 ['5-9', 'k'],
 ['5-6-7-9', 'f'],
 ['4-5-6-7', 'z'],
@@ -299,55 +302,11 @@ After practing with stardard CyKey I changed a few things around, mostly to redu
 the number of fingers required for common letters.
 A and U are swapped (single-letter A), R and P are reduced to 2 fingers, 
     other keys are shuffled to make them fit.
+Backspace is inner thumb + ring finger (Cmd-K)
 `;
 
 function parseChord(keys: Array<number>, chordMap) {
     return chordMap.get(keys.toSorted().join("-"));
-}
-
-// TODO: Shift this outside to somewhere less stupid
-class Chord
-{
-    pressed: boolean[] = []
-    keys: number[] = []
-    releasing = false
-
-    constructor() {
-        for (let i = 0;i < 10; i++) { // TODO: sync this to the max number of keys defined in the keymap!
-            this.keys[i] = 0;
-            this.pressed[i] = false;
-        }
-    }
-
-    isClear(): boolean {
-        return this.keys.every((it) => it == 0)
-    }
-
-    down(keycode: number) {
-        this.keys[keycode] += 1;
-        this.pressed[keycode] = true
-        this.releasing = false
-    }
-    up(keycode: number) {
-        this.keys[keycode] -= 1;
-        this.pressed[keycode] = false
-
-        if (!this.isClear()) {
-            this.releasing = true
-        }
-    }
-
-    pressedKeys(): Array<number> {
-        let x = this.pressed.map((pressed, idx) => pressed ? idx : undefined)
-            .filter((idx) => idx != undefined);
-        return x;
-    }
-
-    reset() {
-        for (let i = 0;i < 10; i++) {
-            this.pressed[i] = false;
-        }
-    }
 }
 
 // TODO: split this left/right, cross hand chords aren't so useful
@@ -489,6 +448,7 @@ function Box() {
                             // disabling Artsey because the main map is the same as Ardux
                             m("p", ["Keymaps are taken from ", m("a", {href: "https://inkeys.wiki/en/keymaps"}, "inclusive keyboards")]),
                  ])),
+                 m("div", m(m.route.Link, {href: "/touch"}, "To touch version")),
             ];
         })
     }
@@ -527,7 +487,6 @@ const FlatKeyDiagram = {
 
         const strip = buttonStates.slice(4,8);
         strip.push(buttonStates[9]);
-        strip.push(buttonStates[8]);
 
         return [
             m("table.minor", [
@@ -689,6 +648,11 @@ m.route(document.getElementById("app"), "/taipo", {
     "/cykey2": {
         render: (() => {
             return m(App, {chordMap: new Map(cykeyMap2), diagram: FlatKeyDiagram, memo: cykey2Memo});
+        })
+    },
+    "/touch": {
+        render: (() => {
+            return m(TouchScreen);
         })
     },
 
